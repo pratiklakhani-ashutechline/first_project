@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Ecommerce</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+    </nav>
+
+    <h1>🛒 Ecommerce Products</h1>
+
+    <button onclick="loadProducts()">Load Products</button>
+    <button onclick="addProduct()">Add Product</button>
+
+    <div id="products" class="grid"></div>
+
+    <script>
+
+        // Load products
+        function loadProducts() {
+            fetch('/api/products')
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById('products');
+                    container.innerHTML = "";
+
+                    data.forEach(p => {
+                        container.innerHTML += `
+                        <div class="card">
+                            <img src="${p.image}" />
+                            <h3>${p.name}</h3>
+                            <p>₹${p.price}</p>
+                            <button onclick="deleteProduct(${p.id})">Delete</button>
+                        <button onclick="updateProduct(${p.id}, '${p.name}', ${p.price}, ${p.image})">Edit</button>
+                        </div>
+                    `;
+                    });
+                });
+        }
+
+        // Add product (popup input)
+        function addProduct() {
+            const name = prompt("Enter product name:");
+            const price = prompt("Enter price:");
+            const image = prompt("Enter image URL:");
+
+            if (!name || !price || !image) {
+                alert("All fields required!");
+                return;
+            }
+
+            fetch('/api/add-products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    price: Number(price),
+                    image
+                })
+            })
+                .then(res => res.json())
+                .then(() => {
+                    loadProducts();
+                });
+        }
+
+        function updateProduct(id, oldName, oldPrice, oldImage) {
+            const name = prompt("Enter new name:", oldName);
+            const price = prompt("Enter new price:", oldPrice);
+            const image = prompt("Enter new price:", oldImage);
+
+            if (!name || !price || !image) {
+                alert("All fields required!");
+                return;
+            }
+
+            fetch('/api/update-products', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id: id,
+                    name: name,
+                    price: Number(price),
+                    image: image ?? oldImage
+                })
+            })
+            .then(res => res.json())
+            .then(() => {
+                loadProducts(); // refresh UI
+            })
+            .catch(err => console.error(err));
+        }
+
+        // Delete product
+        function deleteProduct(id) {
+            if (!confirm("Are you sure you want to delete?")) return;
+
+            fetch(`/api/delete-products`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id
+                })
+            })
+                .then(res => res.json())
+                .then(() => {
+                    loadProducts();
+                });
+        }
+
+    </script>
+
+</body>
+
+</html>
