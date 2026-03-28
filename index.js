@@ -1,8 +1,12 @@
 const express = require('express');
 const path = require('path');
+const connectDB = require('./config/db');
 
 const app = express();
 const PORT = 3000;
+
+// connect database
+connectDB();
 
 // Middleware
 app.use(express.json());

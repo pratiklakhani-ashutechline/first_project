@@ -31,13 +31,14 @@
                     container.innerHTML = "";
 
                     data.forEach(p => {
-                        container.innerHTML += `
+                        container.innerHTML += ` 
                         <div class="card">
                             <img src="${p.image}" />
                             <h3>${p.name}</h3>
                             <p>₹${p.price}</p>
-                            <button onclick="deleteProduct(${p.id})">Delete</button>
-                        <button onclick="updateProduct(${p.id}, '${p.name}', ${p.price}, ${p.image})">Edit</button>
+
+                            <button onclick="deleteProduct('${p._id}')">Delete</button>
+                            <button onclick="updateProduct('${p._id}', '${p.name}', ${p.price}, '${p.image}')">Edit</button>
                         </div>
                     `;
                     });
@@ -73,7 +74,7 @@
         function updateProduct(id, oldName, oldPrice, oldImage) {
             const name = prompt("Enter new name:", oldName);
             const price = prompt("Enter new price:", oldPrice);
-            const image = prompt("Enter new price:", oldImage);
+            const image = prompt("Enter new image:", oldImage);
 
             if (!name || !price || !image) {
                 alert("All fields required!");
@@ -92,11 +93,11 @@
                     image: image ?? oldImage
                 })
             })
-            .then(res => res.json())
-            .then(() => {
-                loadProducts(); // refresh UI
-            })
-            .catch(err => console.error(err));
+                .then(res => res.json())
+                .then(() => {
+                    loadProducts(); // refresh UI
+                })
+                .catch(err => console.error(err));
         }
 
         // Delete product
