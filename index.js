@@ -25,6 +25,9 @@ app.get('/about', (req, res) => {
 });
 
 // API routes
+app.get('/api', (req, res) => {
+    res.json({ message: "API is working! 🚀", endpoints: ["/products", "/add-products", "/update-products", "/delete-products"] });
+});
 app.use('/api', require('./routes/productRoutes'));
 
 // Start server
