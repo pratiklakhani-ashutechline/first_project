@@ -1,124 +1,197 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Ecommerce</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gromuse | Fresh Grocery & Meat</title>
     <link rel="stylesheet" href="/style.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-
 <body>
 
-    <nav>
-        <a href="/">Home</a>
-        <a href="/about">About</a>
-    </nav>
+    <header>
+        <div class="logo-section">
+            <div class="icon-btn">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-basket-shopping" style="color: var(--gromuse-yellow); font-size: 1.5rem;"></i>
+                <h2>Gromuse</h2>
+            </div>
+        </div>
 
-    <h1>🛒 Ecommerce Products</h1>
+        <div class="search-bar">
+            <input type="text" placeholder="Search for Grocery, Stores, Vegetable or Meat">
+            <i class="fa-solid fa-magnifying-glass" style="color: #666;"></i>
+        </div>
 
-    <button onclick="loadProducts()">Load Products</button>
-    <button onclick="addProduct()">Add Product</button>
+        <div class="promo-text">
+            <i class="fa-solid fa-bolt"></i> Order now and get it within <span style="color:white; font-weight:700;">15 mint!</span>
+        </div>
 
-    <div id="products" class="grid"></div>
+        <div class="header-icons">
+            <div class="icon-btn">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span class="badge">0</span>
+            </div>
+            <img src="https://ui-avatars.com/api/?name=User&background=f4be4f&color=fff" class="profile-img" alt="User Profile">
+        </div>
+    </header>
+
+    <main>
+        <section class="banner">
+            <div class="banner-content">
+                <h1>GET 10% CASHBACK<br>ON SHOPPING $150</h1>
+                <p>Shopping is a bit of a relaxing hobby for me, which is sometimes troubling for the bank balance.</p>
+                <button class="btn-learn">Learn More</button>
+            </div>
+            <div class="banner-image"></div>
+        </section>
+
+        <section class="category-header">
+            <h3>Gromuse / All category</h3>
+            <div class="filter-pills">
+                <div class="pill active">All Categories <i class="fa-solid fa-chevron-down"></i></div>
+                <div class="pill">Price <i class="fa-solid fa-chevron-down"></i></div>
+                <div class="pill">Review <i class="fa-solid fa-chevron-down"></i></div>
+                <div class="pill">Color <i class="fa-solid fa-chevron-down"></i></div>
+                <div class="pill">Material <i class="fa-solid fa-chevron-down"></i></div>
+                <div class="pill">Offer <i class="fa-solid fa-chevron-down"></i></div>
+                <div class="pill">All Filters <i class="fa-solid fa-sliders"></i></div>
+                <div class="pill" style="margin-left: auto;">Sort by <i class="fa-solid fa-chevron-down"></i></div>
+            </div>
+        </section>
+
+        <!-- Dynamic Product Grid -->
+        <div id="productContainer" class="product-grid"></div>
+
+        <!-- Hidden section for Admin (to add/edit products if needed) -->
+        <div style="margin-top: 50px; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
+            <p style="color: #999; font-size: 0.8rem; margin-bottom: 10px;">Admin Controls</p>
+            <button onclick="addProduct()" style="padding: 5px 15px; font-size: 0.75rem; opacity: 0.5;">Add Product</button>
+            <button onclick="loadProducts()" style="padding: 5px 15px; font-size: 0.75rem; opacity: 0.5;">Refresh Grid</button>
+        </div>
+    </main>
 
     <script>
+        // Mapping of product names to local asset images for the demo
+        const assetMap = {
+            'Italian Avocado': '/assets/avocado.png',
+            'Cold drinks (Sprite)': '/assets/sprite.png',
+            'Beetroot': '/assets/beetroot.png',
+            'Szam amm (Process food)': '/assets/food_pack.png',
+            'Beef Mixed (Cut Bone)': '/assets/beef.png'
+        };
+
+        let isSeeding = false;
 
         // Load products
         function loadProducts() {
+            if (isSeeding) return;
+
             fetch('/api/products')
                 .then(res => res.json())
                 .then(data => {
-                    const container = document.getElementById('products');
+                    const container = document.getElementById('productContainer');
                     container.innerHTML = "";
 
-                    data.forEach(p => {
-                        container.innerHTML += ` 
-                        <div class="card">
-                            <img src="${p.image}" />
-                            <h3>${p.name}</h3>
-                            <p>₹${p.price}</p>
+                    // Seed grocery products if the first one isn't the expected one
+                    if (data.length === 0) {
+                        console.log("Seeding demo products...");
+                        seedDemoProducts();
+                        return;
+                    }
 
-                            <button onclick="deleteProduct('${p._id}')">Delete</button>
-                            <button onclick="updateProduct('${p._id}', '${p.name}', ${p.price}, '${p.image}')">Edit</button>
-                        </div>
-                    `;
+                    data.forEach(p => {
+                        const img = assetMap[p.name] || p.image;
+                        // Format price: dollars and cents
+                        const priceParts = p.price.toString().split('.');
+                        const dollars = priceParts[0];
+                        const cents = priceParts[1] ? priceParts[1].padEnd(2, '0') : '00';
+
+                        container.innerHTML += ` 
+                            <div class="product-card">
+                                <img src="${img}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/150'">
+                                <div class="cat-weight">500 gm.</div>
+                                <h4>${p.name}</h4>
+                                <div class="price-tag">
+                                    ${dollars}.<small>${cents}</small><span class="currency">$</span>
+                                </div>
+                                <div style="margin-top:10px; display:flex; gap:10px;">
+                                    <button onclick="deleteProduct('${p._id}')" title="Delete" style="background:none; border:none; color:#ddd; cursor:pointer;"><i class="fa-solid fa-trash-can"></i></button>
+                                    <button onclick="updateProduct('${p._id}')" title="Edit" style="background:none; border:none; color:#ddd; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
+                                </div>
+                            </div>
+                        `;
                     });
                 });
         }
 
-        // Add product (popup input)
+        // Helper to seed demo products if empty
+        function seedDemoProducts() {
+            if (isSeeding) return;
+            isSeeding = true;
+
+            const demoProducts = [
+                { name: 'Italian Avocado', price: 14.29, image: '/assets/avocado.png' },
+                { name: 'Cold drinks (Sprite)', price: 6.29, image: '/assets/sprite.png' },
+                { name: 'Beetroot', price: 17.29, image: '/assets/beetroot.png' },
+                { name: 'Szam amm (Process food)', price: 13.29, image: '/assets/food_pack.png' },
+                { name: 'Beef Mixed (Cut Bone)', price: 12.29, image: '/assets/beef.png' }
+            ];
+
+            const promises = demoProducts.map(p => 
+                fetch('/api/add-products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(p)
+                })
+            );
+
+            Promise.all(promises).then(() => {
+                isSeeding = false;
+                loadProducts();
+            });
+        }
+
+        // Form handlers (Simplified for this UI demo)
         function addProduct() {
-            const name = prompt("Enter product name:");
-            const price = prompt("Enter price:");
-            const image = prompt("Enter image URL:");
-
-            if (!name || !price || !image) {
-                alert("All fields required!");
-                return;
+            const name = prompt("Product Name?");
+            const price = prompt("Price?");
+            if (name && price) {
+                fetch('/api/add-products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, price: parseFloat(price), image: 'https://via.placeholder.com/150' })
+                }).then(() => loadProducts());
             }
-
-            fetch('/api/add-products', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name,
-                    price: Number(price),
-                    image
-                })
-            })
-                .then(res => res.json())
-                .then(() => {
-                    loadProducts();
-                });
         }
 
-        function updateProduct(id, oldName, oldPrice, oldImage) {
-            const name = prompt("Enter new name:", oldName);
-            const price = prompt("Enter new price:", oldPrice);
-            const image = prompt("Enter new image:", oldImage);
-
-            if (!name || !price || !image) {
-                alert("All fields required!");
-                return;
-            }
-
-            fetch('/api/update-products', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    id: id,
-                    name: name,
-                    price: Number(price),
-                    image: image ?? oldImage
-                })
-            })
-                .then(res => res.json())
-                .then(() => {
-                    loadProducts(); // refresh UI
-                })
-                .catch(err => console.error(err));
-        }
-
-        // Delete product
         function deleteProduct(id) {
-            if (!confirm("Are you sure you want to delete?")) return;
-
-            fetch(`/api/delete-products`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id
-                })
-            })
-                .then(res => res.json())
-                .then(() => {
-                    loadProducts();
-                });
+            if (confirm("Delete product?")) {
+                fetch('/api/delete-products', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                }).then(() => loadProducts());
+            }
         }
+
+        function updateProduct(id) {
+            const price = prompt("New Price?");
+            if (price) {
+                fetch('/api/update-products', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, price: parseFloat(price) })
+                }).then(() => loadProducts());
+            }
+        }
+
+        // Initialize
+        loadProducts();
 
     </script>
-
 </body>
-
 </html>

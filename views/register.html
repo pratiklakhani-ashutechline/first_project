@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account | Premium App</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <div class="auth-overlay">
+        <div class="container">
+            <h1>Create Account</h1>
+            <p class="subtitle">Join us to start your journey today</p>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="name@company.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" id="submitBtn" class="btn-primary">
+                    Create Account
+                </button>
+
+                <div id="message"></div>
+
+                <p class="footer-text">
+                    Already have an account? <a href="login">Sign in</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const registerForm = document.getElementById('registerForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const message = document.getElementById('message');
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // Reset UI
+            message.textContent = '';
+            message.className = '';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span>Creating account...';
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    message.textContent = data.message || 'Registration successful! Redirecting...';
+                    message.className = 'success';
+
+                    // Redirect to login after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = 'login';
+                    }, 2000);
+                } else {
+                    message.textContent = data.message || 'Registration failed ❌';
+                    message.className = 'error';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Create Account';
+                }
+            } catch (error) {
+                message.textContent = 'Something went wrong. Please try again later.';
+                message.className = 'error';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Create Account';
+            }
+        });
+    </script>
+</body>
+
+</html>
