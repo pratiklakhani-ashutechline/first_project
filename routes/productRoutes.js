@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product'); // IMPORT MODEL
+const auth = require('../middleware/auth');
 
 // ✅ GET all products
-router.get('/products', async (req, res) => {
+router.get('/products' , auth, async (req, res) => {
   try {
     const products = await Product.find();
     res.json(products);
@@ -13,7 +14,7 @@ router.get('/products', async (req, res) => {
 });
 
 // ✅ POST add product
-router.post('/add-products', async (req, res) => {
+router.post('/add-products', auth, async (req, res) => {
   try {
     const { name, price, image } = req.body;
 
@@ -40,7 +41,7 @@ router.post('/add-products', async (req, res) => {
 });
 
 // ✅ PUT update product
-router.put('/update-products', async (req, res) => {
+router.put('/update-products', auth, async (req, res) => {
   try {
     const { id, name, price, image } = req.body;
 
@@ -65,7 +66,7 @@ router.put('/update-products', async (req, res) => {
 });
 
 // ✅ DELETE product
-router.delete('/delete-products', async (req, res) => {
+router.delete('/delete-products', auth, async (req, res) => {
   try {
     const { id } = req.body;
 

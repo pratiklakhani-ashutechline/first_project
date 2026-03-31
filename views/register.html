@@ -15,6 +15,17 @@
             <p class="subtitle">Join us to start your journey today</p>
 
             <form id="registerForm">
+
+                <div class="form-group">
+                    <label for="firstName">First Name</label>
+                    <input type="text" id="firstName" placeholder="Enter first name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="lastName">Last Name</label>
+                    <input type="text" id="lastName" placeholder="Enter last name" required>
+                </div>
+
                 <div class="form-group">
                     <label for="email">Email Address</label>
                     <input type="email" id="email" placeholder="name@company.com" required>
@@ -23,6 +34,11 @@
                 <div class="form-group">
                     <label for="password">Password</label>
                     <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Re-enter password" required>
                 </div>
 
                 <button type="submit" id="submitBtn" class="btn-primary">
@@ -46,8 +62,18 @@
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // ✅ Frontend validation (quick check)
+            if (password !== confirmPassword) {
+                message.textContent = "Passwords do not match ❌";
+                message.className = "error";
+                return;
+            }
 
             // Reset UI
             message.textContent = '';
@@ -59,16 +85,21 @@
                 const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({
+                        firstName,
+                        lastName,
+                        email,
+                        password,
+                        confirmPassword
+                    })
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    message.textContent = data.message || 'Registration successful! Redirecting...';
+                    message.textContent = data.message || 'Registration successful!';
                     message.className = 'success';
 
-                    // Redirect to login after 2 seconds
                     setTimeout(() => {
                         window.location.href = 'login';
                     }, 2000);
@@ -79,7 +110,7 @@
                     submitBtn.innerHTML = 'Create Account';
                 }
             } catch (error) {
-                message.textContent = 'Something went wrong. Please try again later.';
+                message.textContent = 'Something went wrong ❌';
                 message.className = 'error';
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'Create Account';

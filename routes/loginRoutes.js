@@ -24,8 +24,8 @@ router.post('/login', async (req, res) => {
         // 3. Create token
         const token = jwt.sign(
             { id: user._id },
-            "secretkey",   // later move to .env
-            { expiresIn: "1h" }
+            process.env.JWT_SECRET,
+            { expiresIn: "1m" }
         );
 
         res.json({
@@ -42,28 +42,56 @@ router.post('/login', async (req, res) => {
 // REGISTER
 router.post('/register', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { firstName, lastName, email, password, confirmPassword } = req.body;
 
-        // hash password
+        // 1. Check if user exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists" });
+        }
+
+        // 2. Check all fields
+        if (!firstName || !lastName || !email || !password || !confirmPassword) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+
+        // 3. Password validation
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({
+                message: "Password must be strong (uppercase, lowercase, number, special char, min 6 chars)"
+            });
+        }
+
+        // 4. Check password match
+        if (password !== confirmPassword) {
+            return res.status(400).json({ message: "Passwords do not match" });
+        }
+
+        // 5. Hash password (SECURITY 🔐)
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // 6. Create user
         const user = new User({
+            firstName,
+            lastName,
             email,
             password: hashedPassword
         });
 
         await user.save();
 
-        res.json(
-            { 
-                success: true,
-                message: "User registered",
-                user: {
-                    id: user._id,
-                    email: user.email
-                }
+        res.json({
+            success: true,
+            message: "User registered successfully",
+            user: {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email
             }
-        );
+        });
 
     } catch (error) {
         res.status(500).json({ message: error.message });
