@@ -73,12 +73,38 @@
         <!-- Hidden section for Admin (to add/edit products if needed) -->
         <div style="margin-top: 50px; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
             <p style="color: #999; font-size: 0.8rem; margin-bottom: 10px;">Admin Controls</p>
-            <button onclick="addProduct()" style="padding: 5px 15px; font-size: 0.75rem; opacity: 0.5;">Add
-                Product</button>
-            <button onclick="loadProducts()" style="padding: 5px 15px; font-size: 0.75rem; opacity: 0.5;">Refresh
+            <button onclick="addProduct()" style="padding: 5px 15px; font-size: 0.75rem; opacity: 0.5; border: 1px solid #ddd; cursor: pointer; border-radius: 4px;">Add Result</button>
+            <button onclick="loadProducts()" style="padding: 5px 15px; font-size: 0.75rem; opacity: 0.5; border: 1px solid #ddd; cursor: pointer; border-radius: 4px;">Refresh
                 Grid</button>
         </div>
     </main>
+
+    <!-- Product Modal -->
+    <div id="productModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 2rem; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h3 id="modalTitle" style="margin-bottom: 1rem; color: #333;">Add Product</h3>
+            <form id="productForm">
+                <input type="hidden" id="editProductId">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;">Product Name</label>
+                    <input type="text" id="modalName" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;">Price ($)</label>
+                    <input type="number" step="0.01" id="modalPrice" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;">Product Images & Videos</label>
+                    <input type="file" id="modalImages" accept="image/*,video/*" multiple style="width: 100%; padding: 0.5rem; border: 1px dashed #ddd; border-radius: 8px; box-sizing: border-box;">
+                </div>
+                <div id="imagePreviewContainer" style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 1rem; padding-bottom: 5px;"></div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="closeModal()" style="flex: 1; padding: 0.8rem; border: none; border-radius: 8px; background: #eee; cursor: pointer; color: #333; font-weight: 500;">Cancel</button>
+                    <button type="submit" id="modalSubmitBtn" class="btn-primary" style="flex: 1; padding: 0.8rem; border: none; border-radius: 8px; cursor: pointer;">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         const token = localStorage.getItem("token");
@@ -93,7 +119,8 @@
             fetch('/api/products', {
                 headers: {
                     'Authorization': `Bearer ${token}`
-                }
+                },
+                cache: "no-store"
             }).then(res => {
                 if (res.status === 401) {
                     // TOKEN EXPIRED OR INVALID
@@ -109,18 +136,57 @@
             })
             .then(data => {
                 const container = document.getElementById('productContainer');
-                container.innerHTML = "";
+                container.innerHTML = "<style>.no-scroll::-webkit-scrollbar { display: none; }</style>";
 
                 data.forEach(p => {
-                    const img = p.image || "https://t3.ftcdn.net/jpg/10/22/24/80/360_F_1022248039_7LDxHRi3Mlt9BK3wzLBUGZp9XAO1gt2s.jpg";
+                    // Support Carousels
+                    let mediaHTML = '';
+                    let targetImages = [];
+
+                    if (p.images && p.images.length > 0) {
+                        targetImages = p.images;
+                    } else if (p.image) {
+                        targetImages = [p.image];
+                    }
+                    
+                    let hasMultiple = targetImages.length > 1;
+
+                    if (targetImages.length > 0) {
+                        targetImages.forEach(img => {
+                            const isV = img.match(/\.(mp4|webm|ogg|mov)$/i);
+                            const mediaElement = isV
+                                ? `<video src="${img}" autoplay loop muted style="width: 100%; height: 150px; object-fit: cover;"></video>`
+                                : `<img src="${img}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/150'" style="width: 100%; height: 150px; object-fit: cover;">`;
+                            mediaHTML += `<div style="min-width: 100%; scroll-snap-align: start;">${mediaElement}</div>`;
+                        });
+                    } else {
+                        mediaHTML = `<div style="min-width: 100%; height: 150px; background: #f9f9f9; display: flex; align-items: center; justify-content: center; color: #ccc; border-radius: 8px 8px 0 0;"><i class="fa-solid fa-image" style="font-size: 2rem;"></i></div>`;
+                    }
+
+                    const carouselId = 'carousel-' + p._id;
+                    const controls = hasMultiple ? `
+                        <button onclick="scrollSlider('${carouselId}', -1)" style="position:absolute; left:5px; top:40%; transform:translateY(-50%); background:rgba(0,0,0,0.6); color:white; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:12px; z-index: 10;">&#10094;</button>
+                        <button onclick="scrollSlider('${carouselId}', 1)" style="position:absolute; right:5px; top:40%; transform:translateY(-50%); background:rgba(0,0,0,0.6); color:white; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:12px; z-index: 10;">&#10095;</button>
+                        <div style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; z-index: 10;"><i class="fa-solid fa-images"></i> ${targetImages.length}</div>
+                    ` : '';
+
+                    const carouselElement = `
+                        <div style="position:relative; width: 100%; height: 150px; border-radius: 8px 8px 0 0; overflow:hidden;">
+                            ${controls}
+                            <div id="${carouselId}" class="no-scroll" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; width:100%; height:100%; border-radius: 8px 8px 0 0;">
+                                ${mediaHTML}
+                            </div>
+                        </div>
+                    `;
+
                     // Format price: dollars and cents
                     const priceParts = p.price.toString().split('.');
                     const dollars = priceParts[0];
                     const cents = priceParts[1] ? priceParts[1].padEnd(2, '0') : '00';
 
                     container.innerHTML += ` 
-                        <div class="product-card">
-                            <img src="${img}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/150'">
+                        <div class="product-card" style="position: relative;">
+                            ${carouselElement}
                             <div class="cat-weight">500 gm.</div>
                             <h4>${p.name}</h4>
                             <div class="price-tag">
@@ -128,7 +194,7 @@
                             </div>
                             <div style="margin-top:10px; display:flex; gap:10px;">
                                 <button onclick="deleteProduct('${p._id}')" title="Delete" style="background:none; border:none; color:#ddd; cursor:pointer;"><i class="fa-solid fa-trash-can"></i></button>
-                                <button onclick="updateProduct('${p._id}')" title="Edit" style="background:none; border:none; color:#ddd; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick='updateProduct("${p._id}", "${p.name.replace(/'/g, "\\'").replace(/"/g, "&quot;")}", "${p.price}", ${JSON.stringify(targetImages)})' title="Edit" style="background:none; border:none; color:#ddd; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
                             </div>
                         </div>
                     `;
@@ -136,27 +202,253 @@
             });
         }
 
-        // Form handlers (Simplified for this UI demo)
-        function addProduct() {
-            const name = prompt("Product Name?");
-            const price = prompt("Price?");
-            const image = prompt("Image URL?");
+        // Form handlers
+        const modal = document.getElementById('productModal');
+        const productForm = document.getElementById('productForm');
+        let existingImagesState = []; // Holds arrays of existing URLs so we can splice them individually
 
-            if (name && price && image) {
-                fetch('/api/add-products', {
-                    method: 'POST',
+        function scrollSlider(id, direction) {
+            const container = document.getElementById(id);
+            const scrollAmount = container.clientWidth * direction;
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+
+        function openModal(isEdit = false) {
+            modal.style.display = 'flex';
+            document.getElementById('imagePreviewContainer').innerHTML = ''; // Clear preview
+            existingImagesState = []; // Reset existing array
+
+            if(!isEdit) {
+                document.getElementById('modalTitle').textContent = 'Add Product';
+                productForm.reset();
+                document.getElementById('editProductId').value = '';
+                document.getElementById('modalImages').required = true;
+            } else {
+                document.getElementById('modalTitle').textContent = 'Update Product';
+                document.getElementById('modalImages').required = false; // Note: optional when editing
+            }
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            productForm.reset();
+            document.getElementById('imagePreviewContainer').innerHTML = '';
+        }
+
+        function addProduct() {
+            openModal(false);
+        }
+
+        function updateProduct(id, currentName, currentPrice, currentImagesArray) {
+            openModal(true);
+            document.getElementById('editProductId').value = id;
+            document.getElementById('modalName').value = currentName;
+            document.getElementById('modalPrice').value = currentPrice;
+
+            existingImagesState = Array.isArray(currentImagesArray) ? [...currentImagesArray] : [];
+
+            // Show existing media as previews
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            
+            existingImagesState.forEach(imgUrl => {
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'relative';
+                wrapper.style.display = 'inline-block';
+
+                const isVideo = imgUrl.match(/\.(mp4|webm|ogg|mov)$/i);
+                const mediaThumb = document.createElement(isVideo ? 'video' : 'img');
+                mediaThumb.src = imgUrl;
+                mediaThumb.style.width = '60px';
+                mediaThumb.style.height = '60px';
+                mediaThumb.style.objectFit = 'cover';
+                mediaThumb.style.borderRadius = '6px';
+                mediaThumb.style.border = '1px solid #ddd';
+
+                if (isVideo) {
+                    mediaThumb.autoplay = true;
+                    mediaThumb.loop = true;
+                    mediaThumb.muted = true;
+                }
+
+                // Add Absolute Delete Button overlay
+                const removeBtn = document.createElement('button');
+                removeBtn.innerHTML = '&times;';
+                removeBtn.style.position = 'absolute';
+                removeBtn.style.top = '-5px';
+                removeBtn.style.right = '-5px';
+                removeBtn.style.background = 'red';
+                removeBtn.style.color = 'white';
+                removeBtn.style.border = 'none';
+                removeBtn.style.borderRadius = '50%';
+                removeBtn.style.width = '20px';
+                removeBtn.style.height = '20px';
+                removeBtn.style.cursor = 'pointer';
+                removeBtn.style.fontSize = '12px';
+                
+                removeBtn.onclick = (e) => {
+                    e.preventDefault(); // Stop form submission
+                    wrapper.remove();   // Kill the image visually
+                    // Splice it out of state so it's not saved!
+                    existingImagesState = existingImagesState.filter(u => u !== imgUrl);
+                };
+
+                wrapper.appendChild(mediaThumb);
+                wrapper.appendChild(removeBtn);
+
+                previewContainer.appendChild(wrapper);
+            });
+        }
+
+        // Live Image File Preview rendering
+        document.getElementById('modalImages').addEventListener('change', function(event) {
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            // We clear out the existing DB previews intentionally so they only see what they are freshly uploading!
+            previewContainer.innerHTML = ''; 
+            
+            const files = event.target.files;
+            if (files && files.length > 0) {
+                Array.from(files).forEach(file => {
+                     const reader = new FileReader(); // Convert to local displayable URL
+                    reader.onload = function(e) {
+                         const wrapper = document.createElement('div');
+                         wrapper.style.position = 'relative';
+                         wrapper.style.display = 'inline-block';
+
+                         const isVideo = file.type.startsWith('video/');
+                         const mediaThumb = document.createElement(isVideo ? 'video' : 'img');
+                         mediaThumb.src = e.target.result;
+                         mediaThumb.style.width = '60px';
+                         mediaThumb.style.height = '60px';
+                         mediaThumb.style.objectFit = 'cover';
+                         mediaThumb.style.borderRadius = '6px';
+                         mediaThumb.style.border = '2px solid #f4be4f'; // brand color
+
+                         if (isVideo) {
+                             mediaThumb.autoplay = true;
+                             mediaThumb.loop = true;
+                             mediaThumb.muted = true;
+                         }
+
+                         // Live File Delete logic using DataTransfer hooks
+                         const removeBtn = document.createElement('button');
+                         removeBtn.innerHTML = '&times;';
+                         removeBtn.style.position = 'absolute';
+                         removeBtn.style.top = '-5px';
+                         removeBtn.style.right = '-5px';
+                         removeBtn.style.background = 'red';
+                         removeBtn.style.color = 'white';
+                         removeBtn.style.border = 'none';
+                         removeBtn.style.borderRadius = '50%';
+                         removeBtn.style.width = '20px';
+                         removeBtn.style.height = '20px';
+                         removeBtn.style.cursor = 'pointer';
+                         removeBtn.style.fontSize = '12px';
+
+                         removeBtn.onclick = (e) => {
+                             e.preventDefault();
+                             wrapper.remove();
+                             // Strip just THIS file from the physical input selection
+                             const dt = new DataTransfer();
+                             const input = document.getElementById('modalImages');
+                             for (let i = 0; i < input.files.length; i++) {
+                                 if (input.files[i] !== file) {
+                                     dt.items.add(input.files[i]);
+                                 }
+                             }
+                             input.files = dt.files;
+                         };
+
+                         wrapper.appendChild(mediaThumb);
+                         wrapper.appendChild(removeBtn);
+
+                         previewContainer.appendChild(wrapper);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        });
+
+        // Handle Modal Form Submit
+        productForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('modalSubmitBtn');
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+
+            try {
+                const id = document.getElementById('editProductId').value;
+                const name = document.getElementById('modalName').value;
+                const price = document.getElementById('modalPrice').value;
+                const imageFiles = document.getElementById('modalImages').files;
+
+                let uploadedUrls = [];
+
+                // Step 1: Fire Upload Assets API Call
+                if (imageFiles && imageFiles.length > 0) {
+                    submitBtn.textContent = 'Uploading files...';
+                    const uploadData = new FormData();
+                    for(let i = 0; i < imageFiles.length; i++) {
+                        uploadData.append('assets', imageFiles[i]);
+                    }
+
+                    const uploadRes = await fetch('/api/upload-assets', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: uploadData
+                    });
+
+                    if (!uploadRes.ok) throw new Error("Failed to upload assets to Cloudinary");
+                    const parsed = await uploadRes.json();
+                    uploadedUrls = parsed.urls || [];
+                }
+
+                // Step 2: Fire Add/Update JSON Package Call
+                submitBtn.textContent = 'Saving product...';
+                const url = id ? '/api/update-products' : '/api/add-products';
+                const method = id ? 'PUT' : 'POST';
+
+                // Array routing logic
+                if (id) {
+                    // Combine whatever existing images weren't deleted + newly uploaded Cloudinary URLs
+                    uploadedUrls = [...existingImagesState, ...uploadedUrls];
+                }
+
+                const payload = {
+                    name,
+                    price
+                };
+                if (uploadedUrls !== undefined) {
+                    payload.images = uploadedUrls;
+                }
+                
+                if (id) payload.id = id;
+
+                const response = await fetch(url, {
+                    method: method,
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ 
-                        name, 
-                        price: parseFloat(price), 
-                        image 
-                    })
-                }).then(() => loadProducts());
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    closeModal();
+                    loadProducts(); // refresh grid dynamically
+                } else {
+                    const data = await response.json();
+                    alert(data.message || 'Failed to save product');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Something went wrong submitting the form');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
             }
-        }
+        });
 
         function deleteProduct(id) {
             if (confirm("Delete product?")) {
@@ -167,20 +459,6 @@
                         'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({ id })
-                }).then(() => loadProducts());
-            }
-        }
-
-        function updateProduct(id) {
-            const price = prompt("New Price?");
-            if (price) {
-                fetch('/api/update-products', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ id, price: parseFloat(price) })
                 }).then(() => loadProducts());
             }
         }

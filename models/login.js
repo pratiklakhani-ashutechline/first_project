@@ -17,6 +17,14 @@ const UserSchema = new moongoose.Schema({
     password: {
         type: String,
         required: true
+    },
+    otp: {
+        type: String,
+        default: null
+    },
+    otpExpires: {
+        type: Date,
+        default: null
     }
 });
 module.exports = moongoose.model('User', UserSchema);

@@ -3,6 +3,8 @@ const router = express.Router();
 const User = require('../models/login');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const transporter = require('../config/emailConfig');
 
 // LOGIN
 router.post('/login', async (req, res) => {
@@ -25,7 +27,7 @@ router.post('/login', async (req, res) => {
         const token = jwt.sign(
             { id: user._id },
             process.env.JWT_SECRET,
-            { expiresIn: "1m" }
+            { expiresIn: "5h" }
         );
 
         res.json({
@@ -92,6 +94,78 @@ router.post('/register', async (req, res) => {
                 email: user.email
             }
         });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// FORGOT PASSWORD
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Generate 6-digit OTP
+        const otp = crypto.randomInt(100000, 999999).toString();
+
+        // Set OTP and expiration (10 minutes)
+        user.otp = otp;
+        user.otpExpires = Date.now() + 10 * 60 * 1000;
+        await user.save();
+
+        // Send Email
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: 'Password Reset OTP',
+            text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        res.json({ success: true, message: "OTP sent to email successfully" });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// RESET PASSWORD
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Verify OTP and expiration
+        if (user.otp !== otp || user.otpExpires < Date.now()) {
+            return res.status(400).json({ message: "Invalid or expired OTP" });
+        }
+
+        // Validate new password
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            return res.status(400).json({
+                message: "Password must be strong (uppercase, lowercase, number, special char, min 6 chars)"
+            });
+        }
+
+        // Hash new password
+        user.password = await bcrypt.hash(newPassword, 10);
+
+        // Clear OTP fields
+        user.otp = null;
+        user.otpExpires = null;
+        await user.save();
+
+        res.json({ success: true, message: "Password reset successful" });
 
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -33,6 +33,10 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'register.html'));
 });
 
+app.get('/forgot-password', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'forgot-password.html'));
+});
+
 // // API routes
 app.use('/api', require('./routes/productRoutes'));
 app.use('/api', require('./routes/loginRoutes'));
